@@ -33,7 +33,7 @@ public:
   byte currPosX;
   byte currPosY;
 
-  bool cursorState,saved;
+  bool cursorState,saved,displayed;
   unsigned long lastCursorBlink;
   unsigned long lastChange;
 
@@ -44,38 +44,44 @@ public:
     this->pantalla = pantallaExt;
   }
   void init() {
+	// starts the tarminal
     pantalla->begin(SH1106_SWITCHCAPVCC);
-    pantallaBlank();
+	pantalla->clearDisplay();
     pantalla->setCursor(0, 0);
     pantalla->setTextWrap(true);
     pantalla->setTextColor(WHITE);
     pantalla->setTextSize(FONT_SIZE);
-    pantalla->println("Greetings from:"); 
+    pantalla->println("Greets from: "); 
     pantalla->println("garfius@gmail.com");
     pantalla->display();
-    delay(cursorBlinkTime);
+    delay(cursorBlinkTime*2);
     netejaArray();
     loadState();
     displayArray();
     cursorState = false;
-    saved = false;
+    saved = true;
     lastCursorBlink = millis();
     lastChange = 0;
     saveEepromStartIndex = 0;
   }
   void scrollArray() {
+	// move all up 1 line, discard top, bottom blank
     for (int y = 0; y < (ALCADA - 1); y++) {
       for (int x = 0; x < AMPLADA; x++)
       {
         charArray[x][y] = charArray[x][y + 1];
       }
     }
+	netejaLinia(ALCADA - 1);
   }
   void crlf() {
+	// crlf cursor
     currPosX = 0;
     currPosY += 1;
+	displayed = false;
   }
   byte lastFilledChar() {
+	// last non blank character of the line
     for (int x = (AMPLADA-1); x >= 0; x--)
     {
       if (charArray[x][currPosY] != blank) return x;
@@ -83,18 +89,26 @@ public:
     return 0;
   }
   void doBack() {
+	// backspace cursor
     if (currPosX > 0) {
       currPosX -= 1;
       charArray[currPosX][currPosY] = this->blank;
+	  displayed = false;
     }
     else if (currPosY > 0) {
       currPosY -= 1;
       currPosX = lastFilledChar();
-      charArray[currPosX][currPosY] = this->blank;
-    }
+	  if (currPosX < (AMPLADA-1) ){
+		  currPosX += 1;
+	  }
+	  else {
+		  charArray[currPosX][currPosY] = this->blank;
+	  }
+	  displayed = false;
+	}
   }
   void escriuCaracter(char caracter,bool append=true) {
-    //Serial.println(caracter, HEX);
+	// character input
     if ((caracter == 0x0D) || (caracter == 0x0A)) {// cr || lf  
       crlf();
     }else if ((caracter == 0x08) || (caracter == 0x7F)) {//backspace
@@ -102,36 +116,34 @@ public:
     } else {
       charArray[currPosX][currPosY] = caracter;
       if(append)currPosX += 1;
-      saved = false;
+	  displayed = saved = false;
       this->lastChange = millis();
     }
-
     if (currPosX >= AMPLADA) {
       crlf();
     }
-    
     if (currPosY >= ALCADA) {
       currPosY = ALCADA - 1;
-      scrollArray();
-      netejaLinia(ALCADA - 1);
+      scrollArray(); 
     }
-
   }
   void netejaArray() {
+	  // assign blank to each character, and set cursor to 0,0
     for (int y = 0; y < ALCADA; y++) {
       netejaLinia(y);
     }
-  currPosX = 0;
-  currPosY = 0;
+	currPosX = 0;
+	currPosY = 0;
   }
   void netejaLinia(int y) {
+	// assign blank to each character of the line
     for (int x = 0; x < AMPLADA; x++)
     {
       charArray[x][y] = this->blank;
     }
   }
   void displayArray() {
-    pantalla->clearDisplay();   // clears the screen and buffer
+    pantalla->clearDisplay();
     for (int y = 0; y < ALCADA; y++) {
       for (int x = 0; x < AMPLADA; x++)
       {
@@ -139,15 +151,12 @@ public:
       }
     }
     pantalla->display();
+	displayed = true;
   }
-  void pantallaBlank() {
-    pantalla->clearDisplay();
-    pantalla->display();
-  }
-  void cursorBlink() {
-    this->pantalla->drawFastHLine((int16_t)this->currPosX * fontX, (((int16_t)this->currPosY + 1) * fontY) - 1, fontX - 2, (cursorState) ? WHITE : BLACK);
+  void cursorBlink(bool display=true) {
+    this->pantalla->drawFastHLine((int16_t)this->currPosX * fontX, (((int16_t)this->currPosY + 1) * fontY) - 1, fontX - 2, (cursorState) ? WHITE: BLACK);
     cursorState = !cursorState;
-    this->pantalla->display();
+    if(display)this->pantalla->display();
   }
   void cursorBlinkIfNeeded() {
     if (millis() > (lastCursorBlink+cursorBlinkTime)) {
@@ -159,7 +168,7 @@ public:
     }
   }
   void saveState() {
-    //Serial.println("save");
+	  Serial.println("saved");
     for (int y = 0; y < ALCADA; y++) {
       for (int x = 0; x < AMPLADA; x++)
       {
@@ -172,7 +181,6 @@ public:
   }
   void loadState() {
     if ((EEPROM.read(0) == 0x00) || (EEPROM.read(0) == 0xFF)) {
-      //Serial.println("format");
       netejaArray();
       saveState();
       return;
@@ -187,7 +195,7 @@ public:
     
     currPosX = EEPROM.read(saveEepromStartIndex + (ALCADA*AMPLADA) + 1);
     currPosY = EEPROM.read(saveEepromStartIndex + (ALCADA*AMPLADA));
-  
+	
     saved = true;
   }
   void checkSave() {
@@ -202,28 +210,36 @@ public:
     }
   }
   int getpage() {
-    return saveEepromStartIndex / ((ALCADA * AMPLADA) + 2);
+	  return saveEepromStartIndex / ((ALCADA * AMPLADA) + 2);
   }
   void setPage(int page) {
-  if ((page < 0) || (page == getpage())) {
-    return;
-  }
+	if ((page < 0) || (page == getpage())) {
+		return;
+	}
     if (!saved) {
       saveState();
     }
-  saveEepromStartIndex = (page * ((ALCADA * AMPLADA) + 2)) + 1;
-  //Serial.println(saveEepromStartIndex);
+	saveEepromStartIndex = (page * ((ALCADA * AMPLADA) + 2));
     loadState();
-  displayPage();
+	displayPage();
   }
   void displayPage() {
-  pantalla->clearDisplay();
+	pantalla->clearDisplay();
     pantalla->setCursor(0, 0);
     pantalla->print("Pag: ");
     pantalla->print(getpage());
     pantalla->display();
     delay(cursorBlinkTime);
     displayArray();
+  }
+  void run() {
+	  if (!displayed) {
+		  Serial.println("display");
+		  if(cursorState)cursorBlink(false);
+		  displayArray();
+	  }
+	  checkSave();
+	  cursorBlinkIfNeeded();
   }
 };
 
@@ -247,36 +263,27 @@ void loop(void) {
   {
     charFromSerial = Wire.read();
     if( (charFromSerial == 0xFFFFFFB6) || (charFromSerial == 0xFFFFFFB5)){
-    if (charFromSerial == 0xFFFFFFB6) {
-      myTerminal.setPage(myTerminal.getpage() + 1);
-    }
-    else {
-      myTerminal.setPage(myTerminal.getpage() - 1);
-    }
+		if (charFromSerial == 0xFFFFFFB6) {
+			myTerminal.setPage(myTerminal.getpage() + 1);
+		}
+		else {
+			myTerminal.setPage(myTerminal.getpage() - 1);
+		}
       charToPrintAvailable = false;
-    charFromSerial = 0x00000000;
+	  charFromSerial = 0x00000000;
     }
-  charToPrintAvailable = (charFromSerial != 0x00);
+	charToPrintAvailable = (charFromSerial != 0x00);
   }
 #endif
 
   if (Serial.available()) {
     charFromSerial = Serial.read();
-  //Serial.print(charFromSerial, HEX);
     charToPrintAvailable = true;
   }
   
   if (charToPrintAvailable) {
-    
-    Serial.println();
     charToPrintAvailable = false;
     myTerminal.escriuCaracter(charFromSerial);
-    myTerminal.displayArray();
   }
-  else {
-    myTerminal.cursorBlinkIfNeeded();
-    myTerminal.checkSave();
-  }
-  
-
+  myTerminal.run();
 }
