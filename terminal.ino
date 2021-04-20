@@ -14,7 +14,6 @@
 //----------------------------------------variables-------------------------------------------
 
 char charFromSerial;
-bool charToPrintAvailable = false;
 
 Adafruit_SH1106 myDisplay(7, 8, 6); //Adafruit_SH1106(int8_t DC, int8_t RST, int8_t CS);
 
@@ -33,7 +32,7 @@ public:
   byte currPosX;
   byte currPosY;
 
-  bool cursorState,saved,displayed;
+  bool cursorState,saved,displayed,romEnabled;
   unsigned long lastCursorBlink;
   unsigned long lastChange;
 
@@ -43,7 +42,7 @@ public:
   terminalSH1106(Adafruit_SH1106* pantallaExt) {
     this->pantalla = pantallaExt;
   }
-  void init() {
+  void init(bool useRom=true) {
 	// starts the tarminal
     pantalla->begin(SH1106_SWITCHCAPVCC);
 	pantalla->clearDisplay();
@@ -63,6 +62,7 @@ public:
     lastCursorBlink = millis();
     lastChange = 0;
     saveEepromStartIndex = 0;
+	this->romEnabled = useRom;
   }
   void scrollArray() {
 	// move all up 1 line, discard top, bottom blank
@@ -213,6 +213,7 @@ public:
 	  return saveEepromStartIndex / ((ALCADA * AMPLADA) + 2);
   }
   void setPage(int page) {
+	  if (!romEnabled)return;
 	if ((page < 0) || (page == getpage())) {
 		return;
 	}
@@ -238,7 +239,7 @@ public:
 		  if(cursorState)cursorBlink(false);
 		  displayArray();
 	  }
-	  checkSave();
+	  if (romEnabled)checkSave();
 	  cursorBlinkIfNeeded();
   }
 };
@@ -251,9 +252,9 @@ void setup() {
 
   myTerminal.init();
   
-  Wire.begin();
-  
+  Wire.begin();  
 }
+
 void loop(void) {
   
 #ifdef M5StackKeyboardIncluded
@@ -269,21 +270,20 @@ void loop(void) {
 		else {
 			myTerminal.setPage(myTerminal.getpage() - 1);
 		}
-      charToPrintAvailable = false;
+      
 	  charFromSerial = 0x00000000;
     }
-	charToPrintAvailable = (charFromSerial != 0x00);
+	if(charFromSerial != 0x00) {
+		myTerminal.escriuCaracter(charFromSerial);
+	}
   }
 #endif
 
   while (Serial.available()) {
     charFromSerial = Serial.read();
-    myTerminal.escriuCaracter(charFromSerial);
-    charToPrintAvailable = true;
+	myTerminal.escriuCaracter(charFromSerial);
   }
   
-  if (charToPrintAvailable) {
-    charToPrintAvailable = false;
-    myTerminal.run();
-  }
+  myTerminal.run();
+  
 }
