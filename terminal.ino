@@ -276,14 +276,14 @@ void loop(void) {
   }
 #endif
 
-  if (Serial.available()) {
+  while (Serial.available()) {
     charFromSerial = Serial.read();
+    myTerminal.escriuCaracter(charFromSerial);
     charToPrintAvailable = true;
   }
   
   if (charToPrintAvailable) {
     charToPrintAvailable = false;
-    myTerminal.escriuCaracter(charFromSerial);
+    myTerminal.run();
   }
-  myTerminal.run();
 }
