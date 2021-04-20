@@ -55,7 +55,7 @@ public:
 		pantalla->display();
 		delay(cursorBlinkTime * 2);
 		netejaArray();
-		loadState();
+		if (romEnabled)loadState();
 		displayArray();
 		cursorState = false;
 		saved = true;
@@ -145,6 +145,7 @@ public:
 		}
 	}
 	void displayArray() {
+		// show terminal array on screen
 		pantalla->clearDisplay();
 		for (int y = 0; y < ALCADA; y++) {
 			for (int x = 0; x < AMPLADA; x++)
@@ -156,11 +157,13 @@ public:
 		displayed = true;
 	}
 	void cursorBlink(bool display = true) {
+		// draw or erase cursor
 		this->pantalla->drawFastHLine((int16_t)this->currPosX * fontX, (((int16_t)this->currPosY + 1) * fontY) - 1, fontX - 2, (cursorState) ? WHITE : BLACK);
 		cursorState = !cursorState;
 		if (display)this->pantalla->display();
 	}
 	void cursorBlinkIfNeeded() {
+		// check internal timer and calls cursor blink if needed
 		if (millis() > (lastCursorBlink + cursorBlinkTime)) {
 			cursorBlink();
 			lastCursorBlink = millis();
@@ -171,7 +174,7 @@ public:
 		}
 	}
 	void saveState() {
-		//Serial.println("saved");
+		// save terminal buffer to eeprom
 		for (int y = 0; y < ALCADA; y++) {
 			for (int x = 0; x < AMPLADA; x++)
 			{
@@ -183,6 +186,7 @@ public:
 		saved = true;
 	}
 	void loadState() {
+		// load terminal buffer from eeprom
 		if ((EEPROM.read(0) == 0x00) || (EEPROM.read(0) == 0xFF)) {
 			netejaArray();
 			saveState();
@@ -202,6 +206,7 @@ public:
 		saved = true;
 	}
 	void checkSave() {
+		// internal timed eeprom save
 		if (saved) return;
 		if (millis() > (this->lastChange + saveInterval)) {
 			saveState();
@@ -213,9 +218,11 @@ public:
 		}
 	}
 	int getpage() {
+		// get active eeprom page
 		return saveEepromStartIndex / ((ALCADA * AMPLADA) + 2);
 	}
 	void setPage(int page) {
+		// load,display saved terminal buffer from eeprom
 		if (!romEnabled)return;
 		if ((page < 0) || (page == getpage())) {
 			return;
@@ -228,6 +235,7 @@ public:
 		displayPage();
 	}
 	void displayPage() {
+		// page number splash screen
 		pantalla->clearDisplay();
 		pantalla->setCursor(0, 0);
 		pantalla->print("Pag: ");
@@ -237,13 +245,16 @@ public:
 		displayArray();
 	}
 	void run() {
+		// display buffer, checks if eeprom save needed
 		if (!displayed) {
 			//Serial.println("display");
 			if (cursorState)cursorBlink(false);
 			displayArray();
 		}
+		else {
+			cursorBlinkIfNeeded();
+		}
 		if (romEnabled)checkSave();
-		cursorBlinkIfNeeded();
 	}
 };
 
