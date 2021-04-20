@@ -98,7 +98,7 @@ public:
 		else if (currPosY > 0) {
 			currPosY -= 1;
 			currPosX = lastFilledChar();
-			if (currPosX < (AMPLADA - 1)) {
+			if ((currPosX < (AMPLADA - 1)) && (currPosX > 0)) {
 				currPosX += 1;
 			}
 			else {
