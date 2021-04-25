@@ -14,9 +14,9 @@ Limited character encoding, poor microcontroller :(
 
 # Optional:
 
--M5Stack keyboard input setting via M5StackKeyboardIncluded compiler directive.
+M5Stack keyboard input setting via M5StackKeyboardIncluded compiler directive.
 
--Paging and EEPROM auto page saving setting via boolean class initialization parameter.
+Paging and EEPROM auto page saving setting via boolean class initialization parameter.
 
 # TO-DO
 
@@ -25,3 +25,7 @@ Package as a library and publish to Arduino IDE GUI.
 Complete english code translation.
 
 Create and publish board for easy wiring-soldering adapted to 5 3⁄4 inches pc drive bay.
+
+# To anyone in need to have a simple+cheap+openSource terminal monitor
+
+![Example hardare photo capture](https://github.com/Garfius/Arduino-SH1106-terminal/blob/main/Photo1.jpg)
