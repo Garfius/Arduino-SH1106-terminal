@@ -23,3 +23,5 @@ Limited character encoding, poor microcontroller :(
 Package as a library and publish to Arduino IDE GUI.
 
 Complete english code translation.
+
+Create and publish board for easy wiring-soldering adapted to 5 3⁄4 inches pc drive bay.
